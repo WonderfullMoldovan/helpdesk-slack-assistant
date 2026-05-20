@@ -1,0 +1,77 @@
+# Docker Compose file for local development
+# Brings up PostgreSQL (with pgvector), Redis, and the FastAPI application.
+
+services:
+  # ============================================================
+  # PostgreSQL 16 with pgvector extension
+  # ============================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: helpdesk_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+    ports:
+      # Expose to host for local debugging (psql, DBeaver)
+      # Format: "host_port:container_port"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready returns 0 when Postgres accepts connections
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-helpdesk} -d ${POSTGRES_DB:-helpdesk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================
+  # Redis 7
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: helpdesk_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    # Enable persistence: save snapshot every 60s if >= 1 key changed
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # FastAPI application
+  # ============================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helpdesk_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # For development: mount code into container so changes are visible
+    # without rebuilding the image. Comment out for production-like runs.
+    volumes:
+      - ./app:/app/app
+
+# ============================================================
+# Named volumes — persist data across container restarts
+# ============================================================
+volumes:
+  postgres_data:
+  redis_data:
