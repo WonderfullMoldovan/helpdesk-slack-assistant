@@ -1,0 +1,84 @@
+# ============================================
+# Python
+# ============================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Type checker caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# ============================================
+# Secrets and configuration
+# ============================================
+
+# Real .env file (NEVER commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Keep .env.example as template (it's safe — no real secrets)
+!.env.example
+
+# ============================================
+# IDE / editor
+# ============================================
+
+# VS Code / Cursor
+.vscode/
+.cursor/
+
+# JetBrains
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ============================================
+# Logs and runtime data
+# ============================================
+
+logs/
+*.log
+
+# ============================================
+# Docker
+# ============================================
+
+# Don't ignore docker-compose.yml itself
+# (it's source of truth for local dev topology)
+
+# Ignore local-only docker overrides
+docker-compose.override.yml
+
+# ============================================
+# Database
+# ============================================
+
+# Local SQLite (if accidentally used)
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL dumps
+*.sql.gz
+*.dump

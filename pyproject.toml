@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "helpdesk-slack-assistant"
+version = "0.1.0"
+description = "AI-powered Slack assistant for internal IT support requests"
+requires-python = ">=3.11"
+authors = [
+    {name = "Andrei"}
+]
+
+# Production dependencies
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+
+    # Slack integration
+    "slack-bolt>=1.21.0",
+    "slack-sdk>=3.33.0",
+
+    # LLM and agents
+    "openai>=1.54.0",
+    "langgraph>=0.2.50",
+    "langchain-openai>=0.2.10",
+
+    # Observability
+    "langfuse>=2.55.0",
+    "structlog>=24.4.0",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pgvector>=0.3.6",
+
+    # Cache and scheduler
+    "redis>=5.2.0",
+    "apscheduler>=3.10.4",
+
+    # Configuration and validation
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+
+    # Resilience
+    "tenacity>=9.0.0",
+
+    # Utilities
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Code quality
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+
+    # Testing
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+# Ruff configuration (linter + formatter)
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E,W = pycodestyle errors/warnings
+# F = pyflakes
+# I = isort (import sorting)
+# B = flake8-bugbear (common bugs)
+# UP = pyupgrade (modern Python syntax)
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = []
+
+# Mypy configuration (type checker)
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
