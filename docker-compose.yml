@@ -16,7 +16,7 @@ services:
     ports:
       # Expose to host for local debugging (psql, DBeaver)
       # Format: "host_port:container_port"
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
