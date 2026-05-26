@@ -9,12 +9,15 @@ Questo e il modulo principale che:
 Run locally with:
     uvicorn app.main:app --reload --port 8000
 """
+
 from collections.abc import AsyncIterable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.slack_webhook import router as slack_router
 from app.config.settings import settings
+from app.repositories.redis_client import close_redis, init_redis
 
 
 @asynccontextmanager
@@ -22,23 +25,23 @@ async def lifespan(app:FastAPI) ->AsyncIterable[None]:
     """
     Application lifecycle manager.
 
-    Code before `yield` runs at startup.
-    Code after `yield` runs at shutdown.
+    Startup: initialize external connections (Redis, future: DB, Langfuse).
+    Shutdown: cleanup connections gracefully.
 
-    In future blocks this will:
-    - Initialize database connection pool
-    - Configure Langfuse client
-    - Start background scheduler
-    - Pre-load knowledge base embeddings (if applicable)
     """
     #Startup
     print(f"[startup]Application starting in {settings.app_env} mode")
     print(f"[startup] Log level: {settings.log_level}")
     print(f"[startup] OpenAi default model: {settings.openai_model_default}")
-
+    # Initialize Redis (fail fast if unreachable)
+    print("[startup] Initializing Redis connection...")
+    await init_redis()
+    print("[startup] Redis connected")
     yield
     #Shutdown
-    print("[shutdown] Application sutting down")
+    print("[shutdown] Closing Redis connection...")
+    await close_redis()
+    print("[shutdown] Application shutdown complete")
 # ============================================================
 # FastAPI application instance
 # ============================================================
@@ -86,3 +89,7 @@ async def root() -> dict[str, str]:
         "docs": "/docs",
         "health": "/health",
     }
+# ============================================================
+# Slack routes
+# ============================================================
+app.include_router(slack_router)
