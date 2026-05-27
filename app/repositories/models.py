@@ -16,7 +16,6 @@ from typing import Any
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
-    CheckConstraint,
     Computed,
     DateTime,
     ForeignKey,
@@ -29,7 +28,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
 
 # ============================================================
 # Base class — all models inherit from this

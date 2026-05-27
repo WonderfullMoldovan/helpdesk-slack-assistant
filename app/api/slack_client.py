@@ -62,3 +62,27 @@ async def post_message(
         # Log and re-raise — caller decides how to handle
         print(f"[slack] chat_postMessage failed: {e.response['error']}")
         raise
+
+async def get_user_info(slack_user_id: str) -> dict[str, Any]:
+    """
+    Get user info from Slack by user ID.
+
+    Returns relevant fields: email, display_name, real_name.
+
+    If Slack API errors or user not found, returns empty dict
+    (caller handles missing fields gracefully).
+    """
+    client = get_slack_client()
+
+    try:
+        response = await client.users_info(user=slack_user_id)
+        user_data = response.data.get("user", {})
+        profile = user_data.get("profile", {})
+        return {
+            "email": profile.get("email"),
+            "display_name": profile.get("display_name"),
+            "real_name": profile.get("real_name"),
+        }
+    except SlackApiError as e:
+        print(f"[slack] users_info failed for {slack_user_id}: {e.response['error']}")
+        return {}

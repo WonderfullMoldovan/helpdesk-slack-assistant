@@ -17,6 +17,7 @@ from fastapi import FastAPI
 
 from app.api.slack_webhook import router as slack_router
 from app.config.settings import settings
+from app.repositories.database import close_database, init_database
 from app.repositories.redis_client import close_redis, init_redis
 
 
@@ -33,6 +34,10 @@ async def lifespan(app:FastAPI) ->AsyncIterable[None]:
     print(f"[startup]Application starting in {settings.app_env} mode")
     print(f"[startup] Log level: {settings.log_level}")
     print(f"[startup] OpenAi default model: {settings.openai_model_default}")
+    # Initialize database connection (fail fast if unreachable)
+    print("[startup] initializing database connection...")
+    await init_database()
+    print("[startup] Database connected")
     # Initialize Redis (fail fast if unreachable)
     print("[startup] Initializing Redis connection...")
     await init_redis()
@@ -41,6 +46,8 @@ async def lifespan(app:FastAPI) ->AsyncIterable[None]:
     #Shutdown
     print("[shutdown] Closing Redis connection...")
     await close_redis()
+    print ("[shutdown] Closing database connection...")
+    await close_database()
     print("[shutdown] Application shutdown complete")
 # ============================================================
 # FastAPI application instance

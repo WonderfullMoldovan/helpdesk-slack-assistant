@@ -16,9 +16,12 @@ from typing import Any
 import redis.asyncio as redis_async
 from fastapi import APIRouter, BackgroundTasks, Depends, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.slack_verify import verify_slack_signature
+from app.repositories.database import get_db_session
 from app.repositories.redis_client import get_redis
+from app.repositories.user_repository import UserRepository
 
 router = APIRouter(
     prefix="/slack",
@@ -27,36 +30,65 @@ router = APIRouter(
 # Slack expects an ACK within 3 seconds.
 # Dedup keys live for 10 minutes (longer than Slack's own retry window).
 DEDUP_TTL_SECONDS = 60 * 10
+# Note: the actual processing of the event (e.g., posting a response) happens
+# in a background task, so we can return the ACK immediately without waiting.
 async def process_user_message(
     channel: str,
     user_id: str,
     text: str,
 ) -> None:
     """
-    Background task: process a user message and reply.
+    Background task: identify user, then echo response.
 
-    For now: echo. Future blocks will route to LangGraph agent.
+    User identification:
+    - Look up by slack_user_id
+    - If new, fetch profile from Slack and create record
+    - Future: load conversation history, route to agent
 
-    Note: any exception here is logged but doesn't fail the user-facing request
-    (the webhook already ACK'd with 200 OK).
+    Note: background tasks must create their own DB session — they're not
+    in FastAPI request scope, so Depends(get_db_session) doesn't apply.
     """
-    from app.api.slack_client import post_message
+    from app.api.slack_client import get_user_info, post_message
+    from app.repositories.database import _session_factory
+
+    if _session_factory is None:
+        print("[slack] Cannot process message: database not initialized")
+        return
 
     try:
-        # Echo response - for now, just confirm receipt
-        await post_message(
-            channel=channel,
-            text=f"Echo: {text}",
-        )
-        print(f"[slack] Replied to {user_id} in {channel}")
+        async with _session_factory() as session:
+            user_repo = UserRepository(session)
+
+            existing = await user_repo.get_by_slack_id(user_id)
+
+            if existing is None:
+                #new user - fetch profile from Slack
+                print(f"[slack] New user {user_id}, fetching profile")
+                profile = await get_user_info(user_id)
+
+                user, was_created = await user_repo.get_or_create_by_slack_id(
+                    slack_user_id = user_id,
+                    email = profile.get("email"),
+                    display_name = profile.get("display_name"),
+                    )
+                await session.commit() # commit new user to DB
+                print(f"[slack] Created user {user.id} for Slack ID {user_id}")
+            else:
+                user = existing
+                print(f"[slack] Found existing user {user.id} for Slack ID {user_id}")
+                # echo response (future: route to agent instead with user context)
+                response_text = f"Got your message:{text!r}"
+                await post_message(
+                    channel=channel,
+                    text=response_text,
+                )
+                print(f"[slack] Posted response to {channel} for user {user.id}")
     except Exception as e:
-        # Background tasks can't propagate errors to the user via the webhook
-        # (already 200 OK'd). Log for debugging and try to notify user about failure.
         print(f"[slack] process_user_message failed: {type(e).__name__}: {e}")
         try:
             await post_message(
                 channel=channel,
-                text="Sorry, I hit an error processing your request. Please try again.",
+                text="Sorry, something went wrong processing your message.",
             )
         except Exception as inner:
             print(f"[slack] Failed to send error message: {inner}")
