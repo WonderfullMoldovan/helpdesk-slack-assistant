@@ -48,7 +48,7 @@ async def process_user_message(
 
     Note: any exception is logged + best-effort error notification to user.
     """
-    from app.agents.knowledge_agent import answer_question
+    from app.agents.supervisor import handle_user_query
     from app.api.slack_client import get_user_info, post_message
     from app.repositories.database import get_session_factory
 
@@ -84,9 +84,13 @@ async def process_user_message(
                 user = existing
                 print(f"[slack] Found existing user {user.id} for Slack ID {user_id}")
 
-                #Route to knowledge agent
-                print(f"[slack] Routing to Knowledge Agent: {text!r}")
-                answer = await answer_question(session, text)
+                #Route to Supervisor - multi-agent dispatch
+                print(f"[slack] Routing to Supervisor Agent: {text!r}")
+                answer = await handle_user_query(
+                    session=session,
+                    query=text,
+                    user_id=user_id,
+                )
                 print(f"[slack] Agent returned {len(answer)} chars")
 
                 # Post answer back to Slack
