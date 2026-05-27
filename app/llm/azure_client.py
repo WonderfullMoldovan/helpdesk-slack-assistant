@@ -16,7 +16,6 @@ from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 
 from app.config.settings import settings
 
-
 # Module-level singeltons -created lazily on first access
 _chat_client: AzureChatOpenAI | None = None
 _embedding_client: AzureOpenAIEmbeddings | None = None

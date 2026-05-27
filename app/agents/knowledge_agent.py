@@ -22,8 +22,7 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.azure_client import get_chat_client
-from app.rag.retrieval import RetrievedChunk, search_kb
-
+from app.rag.retrieval import RetrievedChunk, hybrid_search, search_kb
 
 # ============================================================
 # State schema
@@ -59,7 +58,7 @@ async def retrieve_node(state: KnowledgeAgentState) -> dict:
 
     print(f"[knowledge_agent] retrieve: query={query!r}")
 
-    chunks = await search_kb(session, query, top_k=3)
+    chunks = await hybrid_search(session, query, top_k=3)
 
     print(f"[knowledge_agent] retrieve: found {len(chunks)} chunks")
     for chunk in chunks:
