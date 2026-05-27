@@ -56,16 +56,45 @@ class Settings(BaseSettings):
             )
         return v
     # ----------------------------
-    # OpenAI
+    # AzureOpenAI
     # ----------------------------
-    openai_api_key : SecretStr = Field(
+    azure_openai_endpoint:str = Field(
         ...,
-        description="OpenAI API key(starts with 'sk-')",
+        description="Azure OpenAI endpoint URL (e.g. https://my-resource.openai.azure.com/)",
     )
 
-    openai_model_default:str = "gpt-4o-mini"
-    openai_model_complex: str = "gpt-4o"
-    openai_embedding_mmodel:str = "text-embedding-3-small"
+    # Separate API keys for chat and embedding deployments
+    azure_openai_api_key: SecretStr = Field(
+        ...,
+        description="Azure OpenAI API key for chat completions deployment",
+    )
+
+    azure_openai_embedding_api_key: SecretStr = Field(
+        ...,
+        description="Azure OpenAI API key for embedding deployment",
+    )
+
+    # Api version - chat needs recent version
+    azure_openai_api_version_chat: str = "2025-04-01-preview"
+    azure_openai_api_version_embedding: str = "2023-05-15"
+
+    #deployment names
+    azure_openai_deployment_chat: str = "gpt-5.4"
+    azure_openai_deployment_embedding: str = "text-embedding-3-large"
+
+    # Embedding dimensions — text-embedding-3-large native = 3072,
+    # but we truncate to 1536 to match our pgvector Vector(1536) column.
+    # This is supported by OpenAI's dimensions parameter without retraining.
+    azure_openai_embedding_dimensions: int = Field(
+        default=1536,
+        ge=256,
+        le=3072,
+        description="Embedding output dimensions (1536 matches pgvector column)",
+    )
+
+    # Reasoning effort for gpt-5.4 — controls latency vs quality trade-off
+    # Options: "low", "medium", "high"
+    azure_openai_reasoning_effort: Literal["low", "medium", "high"] = "medium"
 
     # ----------------------------
     # Redis

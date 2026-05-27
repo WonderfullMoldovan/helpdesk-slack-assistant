@@ -33,7 +33,7 @@ async def lifespan(app:FastAPI) ->AsyncIterable[None]:
     #Startup
     print(f"[startup]Application starting in {settings.app_env} mode")
     print(f"[startup] Log level: {settings.log_level}")
-    print(f"[startup] OpenAi default model: {settings.openai_model_default}")
+    print(f"[startup] OpenAi default model: {settings.azure_openai_deployment_chat}")
     # Initialize database connection (fail fast if unreachable)
     print("[startup] initializing database connection...")
     await init_database()

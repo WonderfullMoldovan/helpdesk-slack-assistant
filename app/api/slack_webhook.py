@@ -38,25 +38,29 @@ async def process_user_message(
     text: str,
 ) -> None:
     """
-    Background task: identify user, then echo response.
+    Background task: identify user, route to Knowledge Agent, reply.
 
-    User identification:
-    - Look up by slack_user_id
-    - If new, fetch profile from Slack and create record
-    - Future: load conversation history, route to agent
+    Flow:
+    1. Create DB session (background task is outside FastAPI request scope)
+    2. Identify or create user (Block 9)
+    3. Route query to Knowledge Agent (Block 10)
+    4. Post agent's answer back to Slack
 
-    Note: background tasks must create their own DB session — they're not
-    in FastAPI request scope, so Depends(get_db_session) doesn't apply.
+    Note: any exception is logged + best-effort error notification to user.
     """
+    from app.agents.knowledge_agent import answer_question
     from app.api.slack_client import get_user_info, post_message
-    from app.repositories.database import _session_factory
+    from app.repositories.database import get_session_factory
 
-    if _session_factory is None:
-        print("[slack] Cannot process message: database not initialized")
+
+    try:
+        session_factory = get_session_factory()
+    except RuntimeError:
+        print("[slack] DB session factory not initialized")
         return
 
     try:
-        async with _session_factory() as session:
+        async with session_factory() as session:
             user_repo = UserRepository(session)
 
             existing = await user_repo.get_by_slack_id(user_id)
@@ -66,21 +70,29 @@ async def process_user_message(
                 print(f"[slack] New user {user_id}, fetching profile")
                 profile = await get_user_info(user_id)
 
-                user, was_created = await user_repo.get_or_create_by_slack_id(
+                user, _ = await user_repo.get_or_create_by_slack_id(
                     slack_user_id = user_id,
                     email = profile.get("email"),
                     display_name = profile.get("display_name"),
                     )
                 await session.commit() # commit new user to DB
-                print(f"[slack] Created user {user.id} for Slack ID {user_id}")
+                print(
+                    f"[slack] Created user {user.id} "
+                    f"(slack={user_id}, name={user.display_name!r})"
+                )
             else:
                 user = existing
                 print(f"[slack] Found existing user {user.id} for Slack ID {user_id}")
-                # echo response (future: route to agent instead with user context)
-                response_text = f"Got your message:{text!r}"
+
+                #Route to knowledge agent
+                print(f"[slack] Routing to Knowledge Agent: {text!r}")
+                answer = await answer_question(session, text)
+                print(f"[slack] Agent returned {len(answer)} chars")
+
+                # Post answer back to Slack
                 await post_message(
                     channel=channel,
-                    text=response_text,
+                    text=answer,
                 )
                 print(f"[slack] Posted response to {channel} for user {user.id}")
     except Exception as e:

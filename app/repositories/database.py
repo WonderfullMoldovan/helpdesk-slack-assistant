@@ -97,3 +97,19 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
             # On any exception, rollback uncommitted changes
             await session.rollback()
             raise
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """
+    Returns the session factory for use outside of FastAPI request scope
+    (e.g., background tasks, scripts).
+
+    Use FastAPI dependency `get_db_session` inside request handlers.
+    Use this function in background tasks or standalone scripts.
+
+    Raises:
+        RuntimeError: if init_database() has not been called yet.
+    """
+    if _session_factory is None:
+        raise RuntimeError(
+            "Database not initialized. Call init_database() first."
+        )
+    return _session_factory
