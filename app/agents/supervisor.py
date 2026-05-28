@@ -185,6 +185,8 @@ async def handle_user_query(
     Returns:
         Generated answer (Markdown-formatted, ready for Slack)
     """
+    from app.observability.langfuse_client import get_langfuse_handler
+
     graph = build_supervisor_graph()
 
     initial_state: SupervisorState = {
@@ -196,6 +198,18 @@ async def handle_user_query(
         "answer": "",
     }
 
-    final_state = await graph.ainvoke(initial_state)
+    handler = get_langfuse_handler()
+
+    final_state = await graph.ainvoke(
+        initial_state,
+        config={
+            "callbacks":[handler],
+            "metadata":{
+                "slack_user_id": user_id,
+                "query_preview": query[:100]
+            },
+            "run_name":"Helpdes_slack_request"
+        }
+    )
 
     return final_state["answer"]

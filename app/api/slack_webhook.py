@@ -28,7 +28,7 @@ router = APIRouter(
     tags=["slack"],
 )
 # Slack expects an ACK within 3 seconds.
-# Dedup keys live for 10 minutes (longer than Slack's own retry window).
+# Dedup keys live for 1 day (longer than Slack's own retry window).
 DEDUP_TTL_SECONDS = 60 * 60 * 24
 # Note: the actual processing of the event (e.g., posting a response) happens
 # in a background task, so we can return the ACK immediately without waiting.
